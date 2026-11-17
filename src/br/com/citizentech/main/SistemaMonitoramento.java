@@ -1,53 +1,59 @@
 package br.com.citizentech.main;
 
-import br.com.citizentech.model.DadosTerritorio;
+import java.util.ArrayList;
+import java.util.List;
+
+import br.com.citizentech.model.EstrategiaPrevisao;
+import br.com.citizentech.model.PrevisaoMediaMovel;
 import br.com.citizentech.model.Sensor;
 import br.com.citizentech.model.SensorChuva;
 
 public class SistemaMonitoramento {
 
-    // Main provisório: testa o encapsulamento do DadosTerritorio
+    // Main provisório: testa a herança da EstrategiaPrevisao
     public static void main(String[] args) {
 
-        System.out.println("=== Territory Predictive Insights: teste do DadosTerritorio ===\n");
+        System.out.println("=== Territory Predictive Insights: teste da EstrategiaPrevisao ===\n");
 
-        DadosTerritorio territorio = new DadosTerritorio("Jardim Pantanal", 45000, "defesa2026");
-        System.out.println(territorio.getResumo());
+        EstrategiaPrevisao mediaMovel = new PrevisaoMediaMovel(5);
+        System.out.println(mediaMovel.getDescricao());
 
-        System.out.println("\n--- Região e população inválidas ---");
-        territorio.setPopulacao(-500);
-        territorio.setNomeRegiao("   ");
-        territorio.setPopulacao(46000);
+        System.out.println("\n--- Janela inválida ---");
+        EstrategiaPrevisao janelaInvalida = new PrevisaoMediaMovel(1);
+        System.out.println(janelaInvalida.getDescricao());
 
-        System.out.println("\n--- Alterando limiares ---");
-        territorio.setLimiteChuva("1234", 40.0);
-        territorio.setLimiteChuva("defesa2026", 500.0);
-        territorio.setLimiteNivelRio("defesa2026", -2.0);
-        territorio.setLimiteChuva("defesa2026", 25.0);
-
-        System.out.println("\n--- Trocando o código de acesso ---");
-        territorio.alterarCodigoAcesso("errado", "novo2026");
-        territorio.alterarCodigoAcesso("defesa2026", "123");
-        territorio.alterarCodigoAcesso("defesa2026", "novo2026");
-        territorio.setLimiteUmidade("defesa2026", 90.0);
-        territorio.setLimiteUmidade("novo2026", 90.0);
-
-        System.out.println("\n--- Estado final ---");
-        System.out.println(territorio.getResumo());
-
-        System.out.println("\n--- Sensor usando o limiar do território ---");
-        Sensor pluviometro = new SensorChuva("CHV-01", "Pluviômetro da Ponte", "Jardim Pantanal");
-        double limite = territorio.getLimite(pluviometro.getTipo());
-        for (int hora = 1; hora <= 5; hora++) {
-            double valor = pluviometro.lerValor();
-            if (valor == Sensor.LEITURA_INVALIDA) {
-                continue;
-            }
-            String situacao = pluviometro.ultrapassouLimite(limite) ? "ACIMA do limite" : "dentro do limite";
-            System.out.println("Hora " + hora + ": " + valor + " mm/h -> " + situacao + " (" + limite + " mm/h)");
+        System.out.println("\n--- Poucas leituras: o sistema se cala ---");
+        List<Double> poucasLeituras = new ArrayList<>();
+        poucasLeituras.add(10.0);
+        poucasLeituras.add(12.0);
+        poucasLeituras.add(15.0);
+        if (!mediaMovel.podePrever(poucasLeituras)) {
+            System.out.println(mediaMovel.getMotivoSemPrevisao(poucasLeituras));
         }
 
-        // territorio.limiteChuva = 999; // Não compila: atributo privado
-        // territorio.getCodigoAcesso(); // Não compila: esse getter não existe
+        System.out.println("\n--- Leituras fixas (conta conferível) ---");
+        List<Double> leiturasFixas = new ArrayList<>(poucasLeituras);
+        leiturasFixas.add(20.0);
+        leiturasFixas.add(25.0);
+        leiturasFixas.add(30.0);
+        System.out.println("Leituras: " + leiturasFixas);
+        System.out.println("Média das últimas 5 (12+15+20+25+30)/5 = " + mediaMovel.prever(leiturasFixas) + " mm/h");
+
+        System.out.println("\n--- Previsão com o sensor de chuva ---");
+        Sensor pluviometro = new SensorChuva("CHV-01", "Pluviômetro da Ponte", "Jardim Pantanal");
+        for (int hora = 1; hora <= 8; hora++) {
+            pluviometro.lerValor();
+        }
+        List<Double> historico = pluviometro.getHistorico().getLeituras();
+        System.out.println("Histórico: " + historico);
+        double previsto = mediaMovel.prever(historico);
+        if (previsto == EstrategiaPrevisao.SEM_PREVISAO) {
+            System.out.println(mediaMovel.getMotivoSemPrevisao(historico));
+        } else {
+            System.out.println("Próxima hora prevista (" + mediaMovel.getNome() + "): " + previsto + " "
+                    + pluviometro.getUnidade());
+        }
+
+        // EstrategiaPrevisao generica = new EstrategiaPrevisao("X", 5); // Não compila: classe abstrata
     }
 }
