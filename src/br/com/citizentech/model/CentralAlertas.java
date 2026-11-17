@@ -14,19 +14,21 @@ public class CentralAlertas {
     private DadosTerritorio territorio;
     private PainelInformativo painel;
     private ArrayList<Alerta> alertasEmitidos;
+    private boolean exibirDetalhes;
 
     public CentralAlertas(DadosTerritorio territorio, PainelInformativo painel) {
         this.territorio = territorio;
         this.painel = painel;
         this.alertasEmitidos = new ArrayList<>();
+        this.exibirDetalhes = true;
     }
 
     // Avalia um sensor com todas as estratégias e emite no máximo um alerta
     public Alerta avaliar(Sensor sensor, List<EstrategiaPrevisao> estrategias) {
-        System.out.println("\n>> Avaliando " + sensor.getNome() + " (" + sensor.getTipo() + ")");
+        this.exibir("\n>> Avaliando " + sensor.getNome() + " (" + sensor.getTipo() + ")");
 
         if (!sensor.verificarFuncionamento()) {
-            System.out.println("   Sem avaliação: o sensor não está funcionando. Dado ruim não vira alerta.");
+            this.exibir("   Sem avaliação: o sensor não está funcionando. Dado ruim não vira alerta.");
             return null;
         }
 
@@ -40,7 +42,7 @@ public class CentralAlertas {
 
         for (EstrategiaPrevisao estrategia : estrategias) {
             if (!estrategia.podePrever(leituras)) {
-                System.out.println("   " + estrategia.getMotivoSemPrevisao(leituras));
+                this.exibir("   " + estrategia.getMotivoSemPrevisao(leituras));
                 continue;
             }
             double previsto = estrategia.prever(leituras);
@@ -49,7 +51,7 @@ public class CentralAlertas {
             String linha = estrategia.getNome() + " prevê " + previsto + " " + sensor.getUnidade() + " = "
                     + percentual + "% do limite de " + limite + " " + sensor.getUnidade()
                     + " -> " + (nivel == null ? "normal" : nivel);
-            System.out.println("   " + linha);
+            this.exibir("   " + linha);
             explicacao += "- " + linha + "\n";
 
             estrategiasQuePreveram++;
@@ -64,11 +66,11 @@ public class CentralAlertas {
         }
 
         if (estrategiasQuePreveram == 0) {
-            System.out.println("   O sistema se cala: ainda não há dados suficientes para prever.");
+            this.exibir("   O sistema se cala: ainda não há dados suficientes para prever.");
             return null;
         }
         if (piorNivel == null) {
-            System.out.println("   Sem alerta: todas as previsões estão abaixo de " + PERCENTUAL_ATENCAO + "% do limite.");
+            this.exibir("   Sem alerta: todas as previsões estão abaixo de " + PERCENTUAL_ATENCAO + "% do limite.");
             return null;
         }
 
@@ -82,9 +84,18 @@ public class CentralAlertas {
 
         Alerta alerta = new Alerta(piorNivel, sensor, explicacao);
         this.alertasEmitidos.add(alerta);
-        System.out.println("   >>> ALERTA EMITIDO: " + piorNivel);
+        this.exibir("   >>> ALERTA EMITIDO: " + piorNivel);
         this.painel.exibirMensagem(alerta.getMensagemPainel());
         return alerta;
+    }
+
+    // Desligado na simulação longa: só o painel fala
+    public void setExibirDetalhes(boolean exibirDetalhes) {
+        this.exibirDetalhes = exibirDetalhes;
+    }
+
+    public boolean isExibirDetalhes() {
+        return this.exibirDetalhes;
     }
 
     public List<Alerta> getAlertasEmitidos() {
@@ -103,6 +114,12 @@ public class CentralAlertas {
             }
         }
         return total;
+    }
+
+    private void exibir(String texto) {
+        if (this.exibirDetalhes) {
+            System.out.println(texto);
+        }
     }
 
     // Abaixo de 80% do limite não é alerta

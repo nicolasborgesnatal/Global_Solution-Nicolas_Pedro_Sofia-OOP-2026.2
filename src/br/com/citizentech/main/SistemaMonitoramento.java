@@ -23,6 +23,7 @@ public class SistemaMonitoramento {
 
     private static final String REGIAO = "Jardim Pantanal";
     private static final int MAXIMO_HORAS_POR_SIMULACAO = 48;
+    private static final int HORAS_DO_DIA = 24;
 
     private Scanner entrada;
     private DadosTerritorio territorio;
@@ -96,6 +97,9 @@ public class SistemaMonitoramento {
                 case 5:
                     this.exibirStatusCompleto();
                     break;
+                case 6:
+                    this.simular24Horas();
+                    break;
                 case 0:
                     System.out.println("\nEncerrando o monitoramento. Até logo!");
                     break;
@@ -113,6 +117,7 @@ public class SistemaMonitoramento {
         System.out.println("3. Rodar previsões e alertas");
         System.out.println("4. Gerenciar dados do território");
         System.out.println("5. Exibir status completo");
+        System.out.println("6. Simular 24 horas com alertas (bônus)");
         System.out.println("0. Sair");
     }
 
@@ -261,6 +266,79 @@ public class SistemaMonitoramento {
             System.out.println("Último alerta:\n" + alertas.get(alertas.size() - 1).getDescricao());
         }
         System.out.println("===============================================");
+    }
+
+    // ---------- 6. Bônus: simulação de 24 horas ----------
+
+    // Lê e avalia hora a hora, como o sistema rodaria sozinho durante um dia
+    private void simular24Horas() {
+        System.out.println("\n=== SIMULAÇÃO DE 24 HORAS (bônus) ===");
+        System.out.println("Cada hora: leitura dos sensores e, se houver risco, o aviso no painel.\n");
+
+        int alertasAntes = this.central.getQuantidadeAlertas();
+        int primeiraHoraComAlerta = 0;
+        int horasComAlerta = 0;
+
+        this.central.setExibirDetalhes(false);
+        for (int i = 1; i <= HORAS_DO_DIA; i++) {
+            this.horaAtual++;
+            System.out.println(this.lerTodosOsSensores());
+            boolean houveAlerta = false;
+            for (Sensor sensor : this.sensores) {
+                if (this.central.avaliar(sensor, this.estrategias) != null) {
+                    houveAlerta = true;
+                }
+            }
+            if (houveAlerta) {
+                horasComAlerta++;
+                if (primeiraHoraComAlerta == 0) {
+                    primeiraHoraComAlerta = this.horaAtual;
+                }
+            }
+        }
+        this.central.setExibirDetalhes(true);
+
+        this.exibirResumoDoDia(alertasAntes, primeiraHoraComAlerta, horasComAlerta);
+    }
+
+    private void exibirResumoDoDia(int alertasAntes, int primeiraHoraComAlerta, int horasComAlerta) {
+        List<Alerta> alertas = this.central.getAlertasEmitidos();
+        int alertasDoDia = alertas.size() - alertasAntes;
+        int criticosDoDia = 0;
+        for (int i = alertasAntes; i < alertas.size(); i++) {
+            if (alertas.get(i).isCritico()) {
+                criticosDoDia++;
+            }
+        }
+
+        System.out.println("\n=============== RESUMO DAS 24 HORAS ===============");
+        System.out.println("Alertas emitidos: " + alertasDoDia + " | Críticos: " + criticosDoDia);
+        if (alertasDoDia == 0) {
+            System.out.println("Nenhuma previsão chegou a 80% dos limites: dia sem risco.");
+        } else {
+            System.out.println("Primeiro alerta na hora " + primeiraHoraComAlerta + ".");
+            System.out.println("Horas com pelo menos um alerta: " + horasComAlerta + " de " + HORAS_DO_DIA + ".");
+        }
+
+        System.out.println("\n--- Pico de cada sensor nas últimas " + HORAS_DO_DIA + " leituras ---");
+        for (Sensor sensor : this.sensores) {
+            System.out.println(sensor.getNome() + ": " + this.calcularPico(sensor) + " " + sensor.getUnidade()
+                    + " (limite " + this.territorio.getLimite(sensor.getTipo()) + ")");
+        }
+        System.out.println("\n" + this.painel.verificarStatus());
+        System.out.println("===================================================");
+    }
+
+    private double calcularPico(Sensor sensor) {
+        List<Double> leituras = sensor.getHistorico().getLeituras();
+        int inicio = Math.max(0, leituras.size() - HORAS_DO_DIA);
+        double pico = 0;
+        for (int i = inicio; i < leituras.size(); i++) {
+            if (leituras.get(i) > pico) {
+                pico = leituras.get(i);
+            }
+        }
+        return pico;
     }
 
     // ---------- Leitura segura do teclado ----------
