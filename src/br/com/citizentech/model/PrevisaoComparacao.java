@@ -29,7 +29,8 @@ public class PrevisaoComparacao extends EstrategiaPrevisao {
     }
 
     // Explica em texto o que a comparação mostrou
-    public String descreverTendencia(List<Double> leituras) {
+    @Override
+    public String explicar(List<Double> leituras) {
         if (!this.podePrever(leituras)) {
             return this.getMotivoSemPrevisao(leituras);
         }

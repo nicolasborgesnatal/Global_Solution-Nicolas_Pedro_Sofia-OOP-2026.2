@@ -23,8 +23,30 @@ public class CentralAlertas {
         this.exibirDetalhes = true;
     }
 
+    // Avalia todos os sensores e mostra no painel só o alerta mais grave da rodada
+    public List<Alerta> avaliarRodada(List<Sensor> sensores, List<EstrategiaPrevisao> estrategias) {
+        List<Alerta> alertasDaRodada = new ArrayList<>();
+        Alerta maisGrave = null;
+        for (Sensor sensor : sensores) {
+            Alerta alerta = this.avaliar(sensor, estrategias);
+            if (alerta == null) {
+                continue;
+            }
+            alertasDaRodada.add(alerta);
+            if (maisGrave == null || this.gravidade(alerta.getNivel()) > this.gravidade(maisGrave.getNivel())) {
+                maisGrave = alerta;
+            }
+        }
+        if (maisGrave == null) {
+            this.painel.limparMensagem();
+        } else {
+            this.painel.exibirMensagem(maisGrave.getMensagemPainel());
+        }
+        return alertasDaRodada;
+    }
+
     // Avalia um sensor com todas as estratégias e emite no máximo um alerta
-    public Alerta avaliar(Sensor sensor, List<EstrategiaPrevisao> estrategias) {
+    private Alerta avaliar(Sensor sensor, List<EstrategiaPrevisao> estrategias) {
         this.exibir("\n>> Avaliando " + sensor.getNome() + " (" + sensor.getTipo() + ")");
 
         if (!sensor.verificarFuncionamento()) {
@@ -52,6 +74,7 @@ public class CentralAlertas {
                     + percentual + "% do limite de " + limite + " " + sensor.getUnidade()
                     + " -> " + (nivel == null ? "normal" : nivel);
             this.exibir("   " + linha);
+            this.exibir("      " + estrategia.explicar(leituras));
             explicacao += "- " + linha + "\n";
 
             estrategiasQuePreveram++;
@@ -85,7 +108,6 @@ public class CentralAlertas {
         Alerta alerta = new Alerta(piorNivel, sensor, explicacao);
         this.alertasEmitidos.add(alerta);
         this.exibir("   >>> ALERTA EMITIDO: " + piorNivel);
-        this.painel.exibirMensagem(alerta.getMensagemPainel());
         return alerta;
     }
 

@@ -8,16 +8,21 @@ public class SensorUmidade extends ComponenteTerritorial implements Sensor {
     private static final double UMIDADE_MINIMA = 20.0;
     private static final double UMIDADE_MAXIMA = 100.0;
     private static final double UMIDADE_INICIAL = 60.0;
+    private static final double CHANCE_INICIAR_CHUVA = 0.06;
+    private static final double CHANCE_TERMINAR_CHUVA = 0.2;
+    private static final double FATOR_RETORNO = 0.1;
 
     private HistoricoLeituras historico;
     private boolean ultimaLeituraFalhou;
     private double umidadeAtual;
+    private boolean emPeriodoChuvoso;
 
     public SensorUmidade(String id, String nome, String regiao) {
         super(id, nome, regiao);
         this.historico = new HistoricoLeituras(CAPACIDADE_HISTORICO);
         this.ultimaLeituraFalhou = false;
         this.umidadeAtual = UMIDADE_INICIAL;
+        this.emPeriodoChuvoso = false;
     }
 
     @Override
@@ -37,9 +42,15 @@ public class SensorUmidade extends ComponenteTerritorial implements Sensor {
         return this.umidadeAtual;
     }
 
-    // O solo seca devagar e encharca aos poucos
+    // Em período chuvoso o solo encharca; fora dele seca aos poucos
     private void simularVariacao() {
-        double variacao = -3 + Math.random() * 8;
+        this.atualizarPeriodoChuvoso();
+        double variacao;
+        if (this.emPeriodoChuvoso) {
+            variacao = 2 + Math.random() * 6;
+        } else {
+            variacao = (UMIDADE_INICIAL - this.umidadeAtual) * FATOR_RETORNO - 2 + Math.random() * 4;
+        }
         double novaUmidade = this.umidadeAtual + variacao;
         if (novaUmidade < UMIDADE_MINIMA) {
             novaUmidade = UMIDADE_MINIMA;
@@ -48,6 +59,15 @@ public class SensorUmidade extends ComponenteTerritorial implements Sensor {
             novaUmidade = UMIDADE_MAXIMA;
         }
         this.umidadeAtual = Math.round(novaUmidade * 10) / 10.0;
+    }
+
+    // Sorteia se o período chuvoso começa ou termina nesta hora
+    private void atualizarPeriodoChuvoso() {
+        if (this.emPeriodoChuvoso) {
+            this.emPeriodoChuvoso = Math.random() >= CHANCE_TERMINAR_CHUVA;
+        } else {
+            this.emPeriodoChuvoso = Math.random() < CHANCE_INICIAR_CHUVA;
+        }
     }
 
     @Override

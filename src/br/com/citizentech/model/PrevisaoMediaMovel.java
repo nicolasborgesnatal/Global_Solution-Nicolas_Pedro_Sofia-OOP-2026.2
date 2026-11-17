@@ -24,6 +24,16 @@ public class PrevisaoMediaMovel extends EstrategiaPrevisao {
     }
 
     @Override
+    public String explicar(List<Double> leituras) {
+        if (!this.podePrever(leituras)) {
+            return this.getMotivoSemPrevisao(leituras);
+        }
+        int fim = leituras.size();
+        return "Últimas " + this.tamanhoJanela + " leituras: " + leituras.subList(fim - this.tamanhoJanela, fim)
+                + " | A próxima deve ficar perto da média: " + this.prever(leituras);
+    }
+
+    @Override
     public String getDescricao() {
         return super.getDescricao() + " | janela das últimas " + this.tamanhoJanela + " leituras";
     }

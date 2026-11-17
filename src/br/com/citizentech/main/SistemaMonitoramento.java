@@ -126,6 +126,7 @@ public class SistemaMonitoramento {
     private void verificarSensores() {
         System.out.println("\n=== EQUIPAMENTOS INSTALADOS ===");
         this.listarComponentes();
+        this.verificarLimitesAtuais();
         int escolha = this.lerInteiro("\nDigite o número de um equipamento para ligar/desligar (0 para voltar): ");
         if (escolha == 0) {
             return;
@@ -147,6 +148,25 @@ public class SistemaMonitoramento {
             ComponenteTerritorial componente = this.componentes.get(i);
             System.out.println((i + 1) + ". " + componente.getResumo());
             System.out.println("   " + componente.verificarStatus());
+        }
+    }
+
+    // Compara a última leitura de cada sensor com o limite: risco agora, não previsto
+    private void verificarLimitesAtuais() {
+        System.out.println("\n--- Leituras atuais x limites ---");
+        for (Sensor sensor : this.sensores) {
+            double limite = this.territorio.getLimite(sensor.getTipo());
+            String situacao;
+            if (sensor.getHistorico().estaVazio()) {
+                situacao = "sem leituras";
+            } else if (!sensor.verificarFuncionamento()) {
+                situacao = "sem leitura confiável (desligado ou com falha)";
+            } else if (sensor.ultrapassouLimite(limite)) {
+                situacao = "ACIMA DO LIMITE";
+            } else {
+                situacao = "dentro do limite";
+            }
+            System.out.println(sensor.getNome() + ": " + situacao + " (limite " + limite + " " + sensor.getUnidade() + ")");
         }
     }
 
@@ -181,15 +201,8 @@ public class SistemaMonitoramento {
 
     private void rodarPrevisoes() {
         System.out.println("\n=== PREVISÕES PARA A PRÓXIMA HORA ===");
-        int alertasAntes = this.central.getQuantidadeAlertas();
-        for (Sensor sensor : this.sensores) {
-            this.central.avaliar(sensor, this.estrategias);
-        }
-        int alertasNovos = this.central.getQuantidadeAlertas() - alertasAntes;
-        System.out.println("\nResultado: " + alertasNovos + " alerta(s) emitido(s) nesta rodada.");
-        if (alertasNovos == 0) {
-            this.painel.limparMensagem();
-        }
+        List<Alerta> alertasDaRodada = this.central.avaliarRodada(this.sensores, this.estrategias);
+        System.out.println("\nResultado: " + alertasDaRodada.size() + " alerta(s) emitido(s) nesta rodada.");
     }
 
     // ---------- 4. Dados do território ----------
@@ -251,6 +264,8 @@ public class SistemaMonitoramento {
         System.out.println("\n--- Equipamentos ---");
         this.listarComponentes();
 
+        this.verificarLimitesAtuais();
+
         System.out.println("\n--- Estratégias de previsão ---");
         for (EstrategiaPrevisao estrategia : this.estrategias) {
             System.out.println("* " + estrategia.getDescricao());
@@ -283,13 +298,8 @@ public class SistemaMonitoramento {
         for (int i = 1; i <= HORAS_DO_DIA; i++) {
             this.horaAtual++;
             System.out.println(this.lerTodosOsSensores());
-            boolean houveAlerta = false;
-            for (Sensor sensor : this.sensores) {
-                if (this.central.avaliar(sensor, this.estrategias) != null) {
-                    houveAlerta = true;
-                }
-            }
-            if (houveAlerta) {
+            List<Alerta> alertasDaHora = this.central.avaliarRodada(this.sensores, this.estrategias);
+            if (!alertasDaHora.isEmpty()) {
                 horasComAlerta++;
                 if (primeiraHoraComAlerta == 0) {
                     primeiraHoraComAlerta = this.horaAtual;

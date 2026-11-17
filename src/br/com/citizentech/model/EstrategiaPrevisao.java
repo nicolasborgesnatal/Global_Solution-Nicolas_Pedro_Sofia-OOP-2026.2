@@ -22,6 +22,9 @@ public abstract class EstrategiaPrevisao {
     // Cada estratégia faz a sua própria conta
     public abstract double prever(List<Double> leituras);
 
+    // Cada estratégia explica o que a sua previsão significa
+    public abstract String explicar(List<Double> leituras);
+
     // Com poucas leituras o sistema se cala em vez de chutar
     public boolean podePrever(List<Double> leituras) {
         return leituras != null && leituras.size() >= this.leiturasMinimas;

@@ -8,16 +8,21 @@ public class SensorNivelRio extends ComponenteTerritorial implements Sensor {
     private static final double NIVEL_MINIMO = 0.5;
     private static final double NIVEL_MAXIMO = 6.0;
     private static final double NIVEL_INICIAL = 2.0;
+    private static final double CHANCE_INICIAR_CHEIA = 0.06;
+    private static final double CHANCE_TERMINAR_CHEIA = 0.2;
+    private static final double FATOR_RETORNO = 0.15;
 
     private HistoricoLeituras historico;
     private boolean ultimaLeituraFalhou;
     private double nivelAtual;
+    private boolean emCheia;
 
     public SensorNivelRio(String id, String nome, String regiao) {
         super(id, nome, regiao);
         this.historico = new HistoricoLeituras(CAPACIDADE_HISTORICO);
         this.ultimaLeituraFalhou = false;
         this.nivelAtual = NIVEL_INICIAL;
+        this.emCheia = false;
     }
 
     @Override
@@ -37,9 +42,15 @@ public class SensorNivelRio extends ComponenteTerritorial implements Sensor {
         return this.nivelAtual;
     }
 
-    // O rio não salta: sobe ou desce um pouco a partir do nível anterior
+    // Na cheia o rio sobe; fora dela volta aos poucos ao nível normal
     private void simularVariacao() {
-        double variacao = -0.3 + Math.random() * 0.8;
+        this.atualizarCheia();
+        double variacao;
+        if (this.emCheia) {
+            variacao = 0.1 + Math.random() * 0.4;
+        } else {
+            variacao = (NIVEL_INICIAL - this.nivelAtual) * FATOR_RETORNO - 0.15 + Math.random() * 0.3;
+        }
         double novoNivel = this.nivelAtual + variacao;
         if (novoNivel < NIVEL_MINIMO) {
             novoNivel = NIVEL_MINIMO;
@@ -48,6 +59,15 @@ public class SensorNivelRio extends ComponenteTerritorial implements Sensor {
             novoNivel = NIVEL_MAXIMO;
         }
         this.nivelAtual = Math.round(novoNivel * 100) / 100.0;
+    }
+
+    // Sorteia se a cheia começa ou termina nesta hora
+    private void atualizarCheia() {
+        if (this.emCheia) {
+            this.emCheia = Math.random() >= CHANCE_TERMINAR_CHEIA;
+        } else {
+            this.emCheia = Math.random() < CHANCE_INICIAR_CHEIA;
+        }
     }
 
     @Override
