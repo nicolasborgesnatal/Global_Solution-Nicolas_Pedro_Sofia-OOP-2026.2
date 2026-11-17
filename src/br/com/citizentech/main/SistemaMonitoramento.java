@@ -4,56 +4,69 @@ import java.util.ArrayList;
 import java.util.List;
 
 import br.com.citizentech.model.EstrategiaPrevisao;
+import br.com.citizentech.model.PrevisaoComparacao;
 import br.com.citizentech.model.PrevisaoMediaMovel;
 import br.com.citizentech.model.Sensor;
 import br.com.citizentech.model.SensorChuva;
+import br.com.citizentech.model.SensorNivelRio;
+import br.com.citizentech.model.SensorUmidade;
 
 public class SistemaMonitoramento {
 
-    // Main provisório: testa a herança da EstrategiaPrevisao
+    // Main provisório: 3 sensores e 2 previsões rodando juntos
     public static void main(String[] args) {
 
-        System.out.println("=== Territory Predictive Insights: teste da EstrategiaPrevisao ===\n");
+        System.out.println("=== Territory Predictive Insights: 3 sensores x 2 previsões ===\n");
 
-        EstrategiaPrevisao mediaMovel = new PrevisaoMediaMovel(5);
-        System.out.println(mediaMovel.getDescricao());
-
-        System.out.println("\n--- Janela inválida ---");
-        EstrategiaPrevisao janelaInvalida = new PrevisaoMediaMovel(1);
-        System.out.println(janelaInvalida.getDescricao());
-
-        System.out.println("\n--- Poucas leituras: o sistema se cala ---");
-        List<Double> poucasLeituras = new ArrayList<>();
-        poucasLeituras.add(10.0);
-        poucasLeituras.add(12.0);
-        poucasLeituras.add(15.0);
-        if (!mediaMovel.podePrever(poucasLeituras)) {
-            System.out.println(mediaMovel.getMotivoSemPrevisao(poucasLeituras));
-        }
-
-        System.out.println("\n--- Leituras fixas (conta conferível) ---");
-        List<Double> leiturasFixas = new ArrayList<>(poucasLeituras);
+        System.out.println("--- Conferindo a Comparação com leituras fixas ---");
+        PrevisaoComparacao comparacao = new PrevisaoComparacao(3);
+        List<Double> leiturasFixas = new ArrayList<>();
+        leiturasFixas.add(10.0);
+        leiturasFixas.add(12.0);
+        leiturasFixas.add(15.0);
         leiturasFixas.add(20.0);
         leiturasFixas.add(25.0);
         leiturasFixas.add(30.0);
         System.out.println("Leituras: " + leiturasFixas);
-        System.out.println("Média das últimas 5 (12+15+20+25+30)/5 = " + mediaMovel.prever(leiturasFixas) + " mm/h");
+        System.out.println(comparacao.descreverTendencia(leiturasFixas));
+        System.out.println("Previsto: 25.0 + (25.0 - 12.33) = " + comparacao.prever(leiturasFixas));
 
-        System.out.println("\n--- Previsão com o sensor de chuva ---");
-        Sensor pluviometro = new SensorChuva("CHV-01", "Pluviômetro da Ponte", "Jardim Pantanal");
-        for (int hora = 1; hora <= 8; hora++) {
-            pluviometro.lerValor();
-        }
-        List<Double> historico = pluviometro.getHistorico().getLeituras();
-        System.out.println("Histórico: " + historico);
-        double previsto = mediaMovel.prever(historico);
-        if (previsto == EstrategiaPrevisao.SEM_PREVISAO) {
-            System.out.println(mediaMovel.getMotivoSemPrevisao(historico));
-        } else {
-            System.out.println("Próxima hora prevista (" + mediaMovel.getNome() + "): " + previsto + " "
-                    + pluviometro.getUnidade());
+        // Listas tipadas pelo contrato e pela classe mãe
+        List<Sensor> sensores = new ArrayList<>();
+        sensores.add(new SensorChuva("CHV-01", "Pluviômetro da Ponte", "Jardim Pantanal"));
+        sensores.add(new SensorNivelRio("RIO-01", "Régua do Córrego Três Pontes", "Jardim Pantanal"));
+        sensores.add(new SensorUmidade("UMD-01", "Umidade do Solo da Encosta", "Jardim Pantanal"));
+
+        List<EstrategiaPrevisao> estrategias = new ArrayList<>();
+        estrategias.add(new PrevisaoMediaMovel(5));
+        estrategias.add(comparacao);
+
+        System.out.println("\n--- Estratégias disponíveis ---");
+        for (EstrategiaPrevisao estrategia : estrategias) {
+            System.out.println("* " + estrategia.getDescricao());
         }
 
-        // EstrategiaPrevisao generica = new EstrategiaPrevisao("X", 5); // Não compila: classe abstrata
+        System.out.println("\n--- 10 horas de leituras ---");
+        for (int hora = 1; hora <= 10; hora++) {
+            for (Sensor sensor : sensores) {
+                sensor.lerValor();
+            }
+        }
+
+        System.out.println("\n--- Previsões por sensor ---");
+        for (Sensor sensor : sensores) {
+            List<Double> historico = sensor.getHistorico().getLeituras();
+            System.out.println("\n" + sensor.getNome() + " (" + sensor.getTipo() + ")");
+            System.out.println("Histórico: " + historico);
+            for (EstrategiaPrevisao estrategia : estrategias) {
+                double previsto = estrategia.prever(historico);
+                if (previsto == EstrategiaPrevisao.SEM_PREVISAO) {
+                    System.out.println("  " + estrategia.getMotivoSemPrevisao(historico));
+                } else {
+                    System.out.println("  " + estrategia.getNome() + ": " + previsto + " " + sensor.getUnidade());
+                }
+            }
+            System.out.println("  " + comparacao.descreverTendencia(historico));
+        }
     }
 }

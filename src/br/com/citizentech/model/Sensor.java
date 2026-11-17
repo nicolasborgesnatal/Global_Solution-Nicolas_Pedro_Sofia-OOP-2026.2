@@ -16,6 +16,9 @@ public interface Sensor {
 
     boolean verificarFuncionamento();
 
+    // Já vem pronto da ComponenteTerritorial: o sensor se identifica nos alertas
+    String getNome();
+
     String getTipo();
 
     String getUnidade();
